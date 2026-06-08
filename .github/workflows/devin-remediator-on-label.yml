@@ -1,0 +1,76 @@
+name: Devin remediation on label
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  DEVIN_ORG_ID: ${{ vars.DEVIN_ORG_ID }}
+  DEVIN_REPO: ${{ vars.DEVIN_REPO_URL || github.event.repository.html_url }}
+  REMEDIATOR_REPOSITORY: ${{ vars.REMEDIATOR_REPOSITORY || 'ishaansingh22/superset-devin-remediator' }}
+  REMEDIATOR_REF: ${{ vars.REMEDIATOR_REF || 'main' }}
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.label.name == 'devin:eligible' &&
+      contains(github.event.issue.labels.*.name, 'state:detected')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out target repository
+        uses: actions/checkout@v4
+        with:
+          path: superset
+
+      - name: Check out remediator
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REMEDIATOR_REPOSITORY }}
+          ref: ${{ env.REMEDIATOR_REF }}
+          path: remediator
+
+      - name: Validate configuration
+        run: |
+          test -n "$DEVIN_API_KEY"
+          test -n "$DEVIN_ORG_ID"
+          test -n "$DEVIN_REPO"
+        env:
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+
+      - name: Build remediator image
+        run: docker build -t superset-devin-remediator ./remediator
+
+      - name: Dispatch Devin session
+        run: >
+          docker run --rm
+          -e GITHUB_TOKEN
+          -e GITHUB_OWNER
+          -e GITHUB_REPO
+          -e DEVIN_API_KEY
+          -e DEVIN_ORG_ID
+          -e DEVIN_REPO
+          -v "$PWD/superset:/workspace/superset"
+          -v "$PWD/remediator:/workspace/out"
+          superset-devin-remediator
+          dispatch
+          --repo-path /workspace/superset
+          --issue "${{ github.event.issue.number }}"
+          --confirm-live
+          --metrics-path /workspace/out/metrics.jsonl
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+
+      - name: Upload dispatch metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: devin-dispatch-${{ github.event.issue.number }}
+          path: remediator/metrics.jsonl
