@@ -18,7 +18,8 @@ jobs:
   dispatch:
     if: >-
       github.event.issue.pull_request == null &&
-      github.event.label.name == 'devin:eligible' &&
+      github.event.label.name == 'devin:dispatch' &&
+      contains(github.event.issue.labels.*.name, 'devin:eligible') &&
       contains(github.event.issue.labels.*.name, 'state:detected')
     runs-on: ubuntu-latest
     steps:
