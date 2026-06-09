@@ -1,8 +1,8 @@
-name: Devin remediation on label
+name: Devin remediation command
 
 on:
-  issues:
-    types: [labeled]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -18,7 +18,7 @@ jobs:
   dispatch:
     if: >-
       github.event.issue.pull_request == null &&
-      github.event.label.name == 'devin:dispatch' &&
+      github.event.comment.body == '/devin dispatch' &&
       contains(github.event.issue.labels.*.name, 'devin:eligible') &&
       contains(github.event.issue.labels.*.name, 'state:detected')
     runs-on: ubuntu-latest
