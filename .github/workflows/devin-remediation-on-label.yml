@@ -1,8 +1,8 @@
-name: Devin remediation on label
+name: Devin remediation on issue
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, reopened]
   workflow_dispatch:
     inputs:
       issue:
@@ -26,9 +26,6 @@ concurrency:
 jobs:
   dispatch:
     name: Dispatch eligible issue to Devin
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issues' && github.event.label.name == 'devin:dispatch')
     runs-on: ubuntu-latest
 
     steps:
