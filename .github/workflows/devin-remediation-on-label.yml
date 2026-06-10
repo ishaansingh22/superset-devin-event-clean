@@ -32,13 +32,16 @@ jobs:
       - name: Resolve issue and guard dispatch
         id: guard
         uses: actions/github-script@v7
+        env:
+          WORKFLOW_ISSUE: ${{ inputs.issue }}
+          WORKFLOW_CONFIRM_LIVE: ${{ inputs.confirm_live }}
         with:
           script: |
             const issueNumber = context.eventName === 'workflow_dispatch'
-              ? Number(core.getInput('issue'))
+              ? Number(process.env.WORKFLOW_ISSUE)
               : context.payload.issue.number;
             const confirmLive = context.eventName === 'workflow_dispatch'
-              ? core.getBooleanInput('confirm_live')
+              ? process.env.WORKFLOW_CONFIRM_LIVE === 'true'
               : true;
             const { owner, repo } = context.repo;
             const { data: issue } = await github.rest.issues.get({
